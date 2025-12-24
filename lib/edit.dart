@@ -91,6 +91,31 @@ class _EditBookingPageState extends State<EditBookingPage> {
     return slots;
   }
 
+  Future<bool> checkAvailability(String counselorId, DateTime date, TimeOfDay time) async {
+    final appointmentDate = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final appointmentTime = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+
+    try {
+      // Check for approved OR pending appointments (both block the slot)
+      // Exclude the current appointment being edited (so it doesn't conflict with itself)
+      final response = await supabase
+          .from('appointment')
+          .select('id, status')
+          .eq('conselor_id', counselorId)
+          .eq('date', appointmentDate)
+          .eq('time', appointmentTime)
+          .neq('id', _selectedAppointment!.id) // Exclude current appointment
+          .inFilter('status', ['pending', 'approved'])
+          .limit(1);
+
+      // Slot is available only if no pending or approved appointments exist (excluding current one)
+      return (response as List).isEmpty;
+    } catch (e) {
+      print('Error checking availability: $e');
+      return false;
+    }
+  }
+
   Future<void> _updateAppointment() async {
     if (selectedDate == null || selectedTime == null || selectedCounselor == null) {
       return;
@@ -99,6 +124,23 @@ class _EditBookingPageState extends State<EditBookingPage> {
     setState(() => _isLoading = true);
 
     try {
+      // Check if the new slot is available (excluding current appointment)
+      final bool available = await checkAvailability(
+        selectedCounselor!.id,
+        selectedDate!,
+        selectedTime!,
+      );
+
+      if (!available) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('This time slot is already booked. Please choose another time.'),
+          ),
+        );
+        return;
+      }
+
       final dateString =
           '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}';
       final timeString =

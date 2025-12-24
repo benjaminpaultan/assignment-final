@@ -200,9 +200,14 @@ class _GuidesModerationTabState extends State<_GuidesModerationTab> {
                           final title = guide['title'] ?? 'No Title';
                           final category = guide['category'] ?? 'General';
                           final content = guide['content'] ?? '';
+                          final fileUrl = guide['file_url'] as String?;
                           final createdAt = guide['created_at'] as String;
                           final guideId = guide['id'] as int;
                           final isPending = _selectedFilter == 'Pending';
+                          
+                          // Check if it's a video or image
+                          final isYoutube = fileUrl?.contains('youtube.com') ?? fileUrl?.contains('youtu.be') ?? false;
+                          final isVideo = (fileUrl?.toLowerCase().endsWith('.mp4') ?? false) || isYoutube;
 
                           return Card(
                             margin: const EdgeInsets.symmetric(
@@ -265,6 +270,49 @@ class _GuidesModerationTabState extends State<_GuidesModerationTab> {
                                     ],
                                   ),
                                   const SizedBox(height: 8),
+                                  // Show image/video if available
+                                  if (fileUrl != null && fileUrl.isNotEmpty) ...[
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: isVideo
+                                          ? Container(
+                                              height: 150,
+                                              width: double.infinity,
+                                              color: Colors.black87,
+                                              child: Stack(
+                                                alignment: Alignment.center,
+                                                children: [
+                                                  if (isYoutube)
+                                                    const Icon(
+                                                      Icons.play_circle_fill,
+                                                      size: 50,
+                                                      color: Colors.white,
+                                                    )
+                                                  else
+                                                    const Icon(
+                                                      Icons.play_circle_fill,
+                                                      size: 50,
+                                                      color: Colors.white,
+                                                    ),
+                                                ],
+                                              ),
+                                            )
+                                          : Image.network(
+                                              fileUrl,
+                                              height: 150,
+                                              width: double.infinity,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) {
+                                                return Container(
+                                                  height: 150,
+                                                  color: Colors.grey[300],
+                                                  child: const Icon(Icons.broken_image),
+                                                );
+                                              },
+                                            ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
                                   Text(
                                     content.length > 100
                                         ? '${content.substring(0, 100)}...'
